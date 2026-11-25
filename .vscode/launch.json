@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "HeatWatch Android (Pixel_8a)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5554",
+      "flutterMode": "debug",
+      "toolArgs": ["--no-enable-impeller"]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đăng nhập quản trị · HeatWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css', v='ui-v2') }}">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <a class="login-brand" href="{{ url_for('website') }}">
+      <span class="login-mark" aria-hidden="true">H°</span>
+      <span>HeatWatch</span>
+    </a>
+    <div class="login-eyebrow">KHÔNG GIAN QUẢN TRỊ</div>
+    <h1>Đăng nhập quản trị</h1>
+    <p>Quản lý thiết bị và vị trí các điểm đo của bạn.</p>
+    {% if error %}<div class="login-error" role="alert">{{ error }}</div>{% endif %}
+    {% if configured %}
+    <form method="post" action="{{ url_for('admin_login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="username">Tên đăng nhập</label>
+      <input id="username" name="username" autocomplete="username" maxlength="100" required autofocus>
+      <label for="password">Mật khẩu</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required>
+      <button type="submit">Đăng nhập</button>
+    </form>
+    {% endif %}
+    <a class="public-link" href="{{ url_for('website') }}">← Xem bản đồ công khai</a>
+    <p class="login-note">Xem bản đồ và dữ liệu không cần tài khoản.</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,139 @@
+{% if not admin_view %}
+{% include 'public.html' %}
+{% else %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e3a6b">
+  <title>HeatWatch · Giám sát nóng bức</title>
+  <meta name="description" content="Theo dõi điểm đo IoT, chỉ số nóng bức và dự báo theo giờ. Xem miễn phí, không cần tài khoản.">
+  {% if admin_view %}<meta id="admin-csrf" name="csrf-token" content="{{ csrf_token() }}">{% endif %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css', v='ui-v15') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='refresh.css', v='ui-v15') }}">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css', v='ui-v15') }}">
+  <script defer src="{{ url_for('static', filename='dashboard.js', v='ui-v15') }}"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Đến nội dung chính</a>
+  <aside class="sidebar">
+    <a href="#overview" class="brand"><span class="brand-mark" aria-hidden="true">H<span>°</span></span><span>HeatWatch<small>HỆ THỐNG GIÁM SÁT IOT</small></span></a>
+    <div class="nav-caption">{{ 'KHÔNG GIAN QUẢN TRỊ' if admin_view else 'THEO DÕI MÔI TRƯỜNG' }}</div>
+    <nav aria-label="Điều hướng chính">
+      <a href="#overview" class="nav-item active"><span aria-hidden="true">◫</span> Tổng quan</a>
+      {% if admin_view %}<a href="#devices" class="nav-item"><span aria-hidden="true">▦</span> Quản lý thiết bị</a>{% endif %}
+      <a href="#history" class="nav-item"><span aria-hidden="true">◷</span> Dữ liệu lịch sử</a>
+      <a href="#forecast" class="nav-item"><span aria-hidden="true">↗</span> Dự báo 5 giờ</a>
+      <a href="#alerts" class="nav-item"><span aria-hidden="true">△</span> Cảnh báo <span id="nav-alert-count" class="nav-count">0</span></a>
+    </nav>
+    {% if admin_view %}
+    <div class="admin-session">
+      <a href="{{ url_for('website') }}">Xem trang công khai</a>
+      <form method="post" action="{{ url_for('admin_logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Đăng xuất</button>
+      </form>
+    </div>
+    {% endif %}
+    <div class="sidebar-bottom"><span class="status-dot" aria-hidden="true"></span> Theo dõi liên tục<small>Làm mới dữ liệu mỗi 15 giây</small></div>
+  </aside>
+  <main id="main" class="main-content">
+    <header class="topbar">
+      <div class="breadcrumb-label">{{ 'Quản trị viên' if admin_view else 'Xem công khai · Không cần tài khoản' }} <span>/</span> Giám sát môi trường</div>
+      <div class="connection"><span id="connection-dot" class="status-dot muted" aria-hidden="true"></span><span id="connection-status" role="status">Đang kết nối máy chủ…</span></div>
+    </header>
+    <div class="page-content">
+      <section id="overview" class="page-section">
+        <div class="page-heading">
+          <div><div class="eyebrow">HEATWATCH · THEO DÕI TRỰC TIẾP</div><h1>Bản đồ &amp; điểm đo</h1><p>Theo dõi từng trạm. Nhận biết nắng nóng. Chủ động mỗi ngày.</p></div>
+          <button id="refresh-button" class="btn btn-outline-secondary refresh-btn" type="button"><span aria-hidden="true">↻</span> Làm mới</button>
+        </div>
+        <div id="global-error" class="notice error-notice" role="alert" hidden></div>
+        <div class="summary-grid">
+          <article class="summary-card"><div class="metric-icon teal" aria-hidden="true">▦</div><div><span>Tổng thiết bị</span><strong id="total-devices">—</strong><small id="online-count">Đang tải dữ liệu</small></div></article>
+          <article class="summary-card"><div class="metric-icon amber" aria-hidden="true">△</div><div><span>Điểm đang cảnh báo</span><strong id="warning-count">—</strong><small>Theo bản đo mới nhất</small></div></article>
+          <article class="summary-card"><div class="metric-icon blue" aria-hidden="true">◷</div><div><span>Đồng bộ gần nhất</span><strong id="sync-time" class="time-value">—</strong><small id="sync-date">Chưa kết nối dữ liệu</small></div></article>
+        </div>
+        <div class="monitor-layout">
+          <article class="panel map-panel">
+            <div class="panel-heading"><div><span class="eyebrow">BẢN ĐỒ TRỰC TIẾP</span><h2>Mỗi điểm đo, một góc nhìn</h2></div><button id="fit-map" class="btn btn-sm btn-light" type="button">◎ Tất cả trạm</button></div>
+            <div id="station-map" role="region" aria-label="Bản đồ vị trí các trạm IoT"><div class="map-loading">Đang tải bản đồ…</div></div>
+            <div class="map-footer"><span><i class="legend-dot"></i> Đang kết nối <i class="legend-dot warning"></i> Cảnh báo <i class="legend-dot offline"></i> Vị trí gần nhất</span><span>Ảnh vệ tinh · Nhãn tiếng Việt</span></div>
+            <p id="map-location-message" class="section-message" role="status">Đang kiểm tra vị trí thiết bị…</p>
+          </article>
+          <aside class="panel stations-panel" aria-label="Danh sách điểm đo">
+            <div class="panel-heading"><div><span class="eyebrow">MẠNG LƯỚI IOT</span><h2>{{ 'Điểm đo của bạn' if admin_view else 'Các điểm đo' }}</h2></div><span id="station-result-count" class="count-pill">0</span></div>
+            <div class="search-field"><span aria-hidden="true">⌕</span><label class="visually-hidden" for="station-search">Tìm tên hoặc mã trạm</label><input id="station-search" type="search" placeholder="Tìm tên hoặc mã trạm…" autocomplete="off"></div>
+            <div id="station-list" class="station-list" role="list"><p class="section-message">Đang tải các điểm đo…</p></div>
+            <p class="station-help">Chọn một trạm hoặc chạm ghim trên bản đồ để xem nhanh dữ liệu.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="station-detail" class="page-section station-detail">
+        <div class="eyebrow">HIỂU RÕ ĐIỂM ĐO</div>
+        <div class="workspace-toolbar detail-heading"><div><h2 id="detail-station-name">Chi tiết điểm đo</h2><p>Số đo hiện tại · Lịch sử · Dự báo 5 giờ</p></div><div class="station-select"><label for="device-select">Điểm đo hiện tại</label><select id="device-select" class="form-select" disabled><option value="">Chưa có thiết bị</option></select></div></div>
+        <div class="reading-grid">
+          <article class="reading-card heat-index"><span>CHỈ SỐ NÓNG BỨC</span><div><strong id="heat-index">—</strong><b>°C</b></div><small id="reading-warning">Chưa có dữ liệu</small></article>
+          <article class="reading-card temperature"><span>NHIỆT ĐỘ</span><div><strong id="temperature">—</strong><b>°C</b></div><small>Nhiệt độ môi trường</small></article>
+          <article class="reading-card humidity"><span>ĐỘ ẨM</span><div><strong id="humidity">—</strong><b>%</b></div><small>Độ ẩm tương đối</small></article>
+        </div>
+        <div class="reading-meta"><span id="reading-update">Chưa có bản đo</span><span id="station-status" class="badge-status neutral">Chưa chọn điểm đo</span></div>
+      </section>
+
+      <section id="history" class="page-section">
+        <div class="section-title"><div><div class="eyebrow">DỮ LIỆU ĐO</div><h2>Lịch sử theo thời gian</h2><p id="history-subtitle">Dữ liệu của điểm đo đang chọn.</p></div><button id="export-history" class="btn btn-outline-secondary" type="button" disabled>↓ Xuất CSV</button></div>
+        <article class="panel"><form id="history-filter" class="history-filters"><div><label for="history-start" class="form-label">Từ ngày</label><input id="history-start" class="form-control" type="datetime-local"></div><div><label for="history-end" class="form-label">Đến ngày</label><input id="history-end" class="form-control" type="datetime-local"></div><div><label for="history-limit" class="form-label">Số bản ghi gần nhất</label><select id="history-limit" class="form-select"><option value="100">100 bản ghi</option><option value="250">250 bản ghi</option><option value="500">500 bản ghi</option></select></div><button class="btn btn-primary" type="submit">Áp dụng</button><button id="clear-history" class="btn btn-light" type="button">Đặt lại</button></form><p id="history-message" class="section-message" role="status">Chọn điểm đo để xem lịch sử.</p><div class="chart-wrap" id="history-chart-wrap" hidden><canvas id="history-chart" role="img" aria-label="Biểu đồ nhiệt độ, độ ẩm và chỉ số nóng bức trong lịch sử"></canvas></div><div class="table-responsive history-table-wrap"><table class="table align-middle mb-0"><thead><tr><th scope="col">Thời gian đo</th><th scope="col">Nhiệt độ</th><th scope="col">Độ ẩm</th><th scope="col">Chỉ số nóng bức</th><th scope="col">Mức cảnh báo</th></tr></thead><tbody id="history-rows"><tr><td colspan="5" class="empty-cell">Chưa có dữ liệu</td></tr></tbody></table></div></article>
+      </section>
+
+      <section id="forecast" class="page-section">
+        <div class="section-title"><div><div class="eyebrow">DỰ BÁO THEO GIỜ</div><h2>5 giờ tiếp theo</h2><p>Dự báo chỉ số nóng bức riêng cho điểm đo đang chọn.</p></div><span class="model-badge">Mô hình LSTM</span></div>
+        <article class="panel forecast-panel"><div id="forecast-message" class="section-message" role="status">Chọn điểm đo để xem dự báo.</div><div id="forecast-content" hidden><div class="forecast-topline"><span id="forecast-status" class="badge-status neutral"></span><span id="forecast-generated"></span></div><div class="chart-wrap forecast-chart-wrap"><canvas id="forecast-chart" role="img" aria-label="Biểu đồ dự báo chỉ số nóng bức trong 5 giờ tiếp theo"></canvas></div><div id="forecast-hours" class="forecast-hours"></div><p id="model-note" class="model-note"></p></div></article>
+        <article id="model-metrics-panel" class="panel metrics-panel mt-3">
+          <div class="panel-heading"><div><span class="eyebrow">ĐÁNH GIÁ MÔ HÌNH AI</span><h3>Chỉ số đánh giá LSTM (MAE · RMSE · R²)</h3></div><span id="metric-source-badge" class="badge-status neutral">Đang kiểm tra…</span></div>
+          <p id="metric-message" class="section-message" role="status">Đang tải kết quả đánh giá mô hình…</p>
+          <div id="metric-body" hidden>
+            <div class="metrics-summary-grid">
+              <div class="metric-kpi"><span>MAE tổng thể</span><strong id="metric-mae">—</strong><small>Sai số tuyệt đối trung bình (°C)</small></div>
+              <div class="metric-kpi"><span>RMSE tổng thể</span><strong id="metric-rmse">—</strong><small>Căn bậc hai sai số bình phương (°C)</small></div>
+              <div class="metric-kpi"><span>Hệ số xác định R²</span><strong id="metric-r2">—</strong><small>Càng gần 1.0 dự báo càng chính xác</small></div>
+            </div>
+            <p id="metric-meta" class="metric-meta"></p>
+            <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th scope="col">Mốc dự báo</th><th scope="col">MAE (°C)</th><th scope="col">RMSE (°C)</th><th scope="col">R²</th></tr></thead><tbody id="metric-horizon-rows"></tbody></table></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="alerts" class="page-section">
+        <div class="section-title"><div><div class="eyebrow">TRẠNG THÁI HỆ THỐNG</div><h2>Danh sách cảnh báo</h2><p>Các bản đo vượt ngưỡng tại điểm đo đang chọn, mới nhất trước.</p></div><span class="threshold-note">Cảnh báo từ 32°C · Nguy hiểm từ 38°C</span></div>
+        <article class="panel"><div id="alert-message" class="section-message" role="status">Chọn điểm đo để xem cảnh báo.</div><div id="alert-list" class="alert-list"></div></article>
+      </section>
+
+      {% if admin_view %}
+      <section id="devices" class="page-section">
+        <div class="section-title"><div><div class="eyebrow">QUẢN LÝ MẠNG LƯỚI</div><h2>Quản lý thiết bị</h2><p>Thêm, chỉnh sửa hoặc tạm ngưng theo dõi thiết bị tại đây.</p></div><button id="add-device" class="btn btn-primary" type="button">+ Thêm thiết bị</button></div>
+        <article class="panel"><div class="table-responsive"><table class="table device-table align-middle mb-0"><thead><tr><th scope="col">Thiết bị</th><th scope="col">Tọa độ</th><th scope="col">Chỉ số nóng bức</th><th scope="col">Trạng thái</th><th scope="col">Bản đo gần nhất</th><th scope="col"><span class="visually-hidden">Thao tác</span></th></tr></thead><tbody id="device-rows"><tr><td colspan="6" class="empty-cell">Đang tải danh sách thiết bị…</td></tr></tbody></table></div></article>
+      </section>
+      {% endif %}
+
+      <footer class="page-footer"><span>HeatWatch · Hệ thống giám sát nóng bức IoT</span><span>Dữ liệu từ trạm đo</span></footer>
+    </div>
+  </main>
+
+  {% if admin_view %}
+  <dialog id="device-dialog" class="device-dialog" aria-labelledby="device-dialog-title">
+    <form id="device-form"><div class="dialog-header"><div><div class="eyebrow">THIẾT BỊ IOT</div><h2 id="device-dialog-title">Thêm thiết bị</h2></div><button id="close-dialog" class="icon-button" type="button" aria-label="Đóng">×</button></div><p class="dialog-description">Thông tin này được dùng để hiển thị trạm trên website và ứng dụng điện thoại.</p><label for="form-device-id" class="form-label">Mã thiết bị</label><input id="form-device-id" class="form-control" required maxlength="100" pattern="[A-Za-z0-9_.:\-]+" placeholder="Ví dụ: ESP32_01"><div class="form-text">Dùng cùng mã device_id được gửi từ thiết bị.</div><label for="form-device-name" class="form-label mt-3">Tên điểm đo</label><input id="form-device-name" class="form-control" required maxlength="150" placeholder="Ví dụ: Trạm sân trường"><div class="row g-3 mt-0"><div class="col-sm-6"><label for="form-latitude" class="form-label">Vĩ độ</label><input id="form-latitude" class="form-control" type="number" step="any" min="-90" max="90" required placeholder="10.7769"></div><div class="col-sm-6"><label for="form-longitude" class="form-label">Kinh độ</label><input id="form-longitude" class="form-control" type="number" step="any" min="-180" max="180" required placeholder="106.7009"></div></div><div class="form-check form-switch mt-3"><input id="form-enabled" class="form-check-input" type="checkbox" checked><label for="form-enabled" class="form-check-label">Hiển thị điểm đo đang hoạt động</label></div><div id="form-error" class="notice error-notice mt-3" role="alert" hidden></div><div class="dialog-actions"><button id="cancel-dialog" class="btn btn-light" type="button">Hủy</button><button id="save-device" class="btn btn-primary" type="submit">Lưu thiết bị</button></div></form>
+  </dialog>
+  {% endif %}
+  <div id="toast-message" class="app-toast" role="status" hidden></div>
+</body>
+</html>
+{% endif %}

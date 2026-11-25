@@ -1,0 +1,113 @@
+dialog.location-invitation {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(380px, calc(100% - 32px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 28px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border: 0;
+  border-radius: 28px;
+  background: #292a2f;
+  color: #e5e2e7;
+  box-shadow: 0 20px 64px #0006;
+  text-align: left;
+  font-family: "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+  z-index: 10000;
+}
+dialog.location-invitation:not([open]),
+dialog.location-invitation[hidden] { display: none; }
+dialog.location-invitation::backdrop { background: #0009; }
+dialog.location-invitation h2 {
+  margin: 0;
+  color: #f2eff4;
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.location-invite-body { display: flex; align-items: flex-start; gap: 16px; }
+.location-invite-icon { width: 28px; height: 32px; flex: 0 0 28px; color: #7dd3fc; margin-top: 2px; }
+dialog.location-invitation p { margin: 0; color: #e0dce2; font-size: 15px; line-height: 1.6; }
+dialog.location-invitation small { display: block; margin-top: 12px; color: #bcb8c2; font-size: 12px; line-height: 1.6; }
+dialog.location-invitation.error p { color: #ffc9bd; }
+.location-invite-actions { display: flex; justify-content: flex-end; gap: 12px; }
+dialog.location-invitation .btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  padding: 11px 14px;
+  border: 1px solid #bcb8c2;
+  border-radius: 999px;
+  background: transparent;
+  color: #a8c7fa;
+  font: 600 14px/1.4 "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+  cursor: pointer;
+  box-shadow: none;
+}
+dialog.location-invitation .btn-primary { background: #a8c7fa; color: #172d4c; border-color: #a8c7fa; }
+dialog.location-invitation .btn:hover { background: #a8c7fa18; }
+dialog.location-invitation .btn-primary:hover { background: #bed6ff; }
+dialog.location-invitation .btn:focus-visible { outline: 3px solid #e8f0ff; outline-offset: 4px; }
+dialog.location-invitation .btn:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 360px) {
+  dialog.location-invitation { padding: 24px 20px 20px; gap: 20px; }
+  dialog.location-invitation h2 { font-size: 22px; }
+  .location-invite-body { gap: 12px; }
+}
+.user-location-status {
+  font-size: 11px;
+  line-height: 1.65;
+  color: #5b7591;
+  padding: 11px 18px 0;
+  margin: 0;
+}
+.user-location-status.error { color: #b45309; }
+.user-location-status.located { color: #0b8483; font-weight: 600; }
+.leaflet-control.location-map-control {
+  border: 1px solid #c9dff5 !important;
+  border-radius: 11px !important;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 76, 129, 0.16);
+  overflow: hidden;
+}
+.location-map-control button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #fff;
+  color: #155eef;
+  border: 0;
+  min-height: 38px;
+  padding: 8px 12px;
+  font: 600 11px/1.3 "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+  cursor: pointer;
+}
+.location-map-control button:hover { background: #edf5ff; }
+.location-map-control button:disabled { color: #8b9db1; cursor: wait; }
+.location-map-control button span { font-size: 16px; font-weight: 400; line-height: 1; }
+.leaflet-tooltip.user-location-tooltip {
+  background: #fff;
+  border: 1px solid #bfdaf7;
+  color: #155eef;
+  box-shadow: 0 4px 14px rgba(15, 76, 129, 0.16);
+  border-radius: 8px;
+  font: 600 11px/1.5 "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+  padding: 5px 10px;
+}
+.leaflet-tooltip-top.user-location-tooltip:before { border-top-color: #bfdaf7; }
+.user-location-popup { font: 12px/1.7 "Be Vietnam Pro", "Segoe UI", Arial, sans-serif; color: #274868; }
+.user-location-popup strong { display: block; color: #155eef; font-size: 14px; }
+.place-tools { flex-wrap: wrap; gap: 6px 10px; }
+.place-selection { flex-basis: 100%; }
+#use-my-location-start:disabled { color: #91a3b5; cursor: wait; }
+
+@media (max-width: 560px) {
+  .location-map-control button { font-size: 10px; min-height: 35px; padding: 7px 9px; }
+  .user-location-status { font-size: 10px; padding: 10px 14px 0; }
+}

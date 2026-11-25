@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1221">
+  <meta name="description" content="Xem thời tiết, nhiệt độ, độ ẩm, bản đồ trạm đo và cảnh báo nắng nóng quanh bạn.">
+  <title>HeatWatch · Thời tiết &amp; Nóng bức quanh bạn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="{{ url_for('static', filename='public.css', v='ui-v15') }}">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='user_location.css', v='ui-v15') }}">
+  <script defer src="{{ url_for('static', filename='user_location.js', v='ui-v15') }}"></script>
+  <script defer src="{{ url_for('static', filename='weather.js', v='ui-v15') }}"></script>
+  <script defer src="{{ url_for('static', filename='dashboard.js', v='ui-v15') }}"></script>
+</head>
+<body class="public-view theme-dark" data-active-tab="weather">
+  <a class="skip-link" href="#main">Đến nội dung chính</a>
+  <header class="public-header">
+    <div class="header-inner">
+      <a class="brand" href="#weather" data-tab-target="weather" aria-label="HeatWatch, về trang Thời tiết">
+        <span class="brand-mark" aria-hidden="true">H<span>°</span></span>
+        <span class="brand-text">HeatWatch<small>Theo dõi nắng nóng</small></span>
+      </a>
+      <nav aria-label="Điều hướng chính">
+        <a class="nav-item active" href="#weather" data-tab-target="weather"><span class="nav-icon" aria-hidden="true">☀️</span> Thời tiết</a>
+        <a class="nav-item" href="#points" data-tab-target="points"><span class="nav-icon" aria-hidden="true">🌡️</span> Điểm đo</a>
+        <a class="nav-item" href="#overview" data-tab-target="overview"><span class="nav-icon" aria-hidden="true">🗺️</span> Bản đồ</a>
+        <a class="nav-item" href="#alerts" data-tab-target="alerts"><span class="nav-bell-wrap" aria-hidden="true"><span class="nav-icon">🔔</span><span id="nav-alert-count" class="nav-count nav-bell-badge" hidden>0</span></span> Cảnh báo</a>
+      </nav>
+      <div class="header-tools">
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Chuyển giao diện Sáng / Tối" title="Chuyển giao diện Sáng / Tối">
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+        </button>
+        <div class="connection">
+          <span id="connection-dot" class="status-dot muted" aria-hidden="true"></span>
+          <span id="connection-status" role="status">Đang kết nối…</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="public-main">
+    <dialog id="location-invitation" class="location-invitation" aria-labelledby="location-invitation-title" aria-describedby="location-invite-message" hidden>
+      <h2 id="location-invitation-title">Bật vị trí hiện tại?</h2>
+      <div class="location-invite-body">
+        <svg class="location-invite-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 22s7-7.2 7-13a7 7 0 1 0-14 0c0 5.8 7 13 7 13Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <div>
+          <p id="location-invite-message" role="status">Hiển thị vị trí của bạn trên bản đồ và lấy thời tiết khu vực quanh bạn.</p>
+          <small>Vị trí chỉ giữ trong trang này. Tọa độ làm tròn chỉ được gửi khi bạn xem thời tiết khu vực.</small>
+        </div>
+      </div>
+      <div class="location-invite-actions">
+        <button id="defer-user-location" class="btn" type="button">Để sau</button>
+        <button id="enable-user-location" class="btn btn-primary" type="button">Dùng vị trí</button>
+      </div>
+    </dialog>
+
+    <section id="public-current" data-public="true" data-tab-panel="points" class="current-section" aria-labelledby="detail-station-name">
+      <div class="current-heading">
+        <div>
+          <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>ĐANG XEM TRẠM ĐO</p>
+          <h1 id="detail-station-name">Điểm đo quanh bạn</h1>
+        </div>
+        <button id="refresh-button" class="btn refresh-btn" type="button" aria-label="Cập nhật lại số đo">
+          <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+          <span>Cập nhật</span>
+        </button>
+      </div>
+      <div id="global-error" class="notice error-notice" role="alert" hidden></div>
+
+      <div class="weather-card">
+        <article class="reading-card heat-index neutral" aria-label="Độ nóng cảm nhận tại trạm đang chọn">
+          <div class="heat-header">
+            <span class="metric-label">ĐỘ NÓNG CẢM NHẬN</span>
+            <span class="heat-chip-unit">Thực tế</span>
+          </div>
+          <div class="heat-value"><strong id="heat-index">—</strong><b>°C</b></div>
+          <small id="reading-warning" role="status">Chưa có dữ liệu</small>
+          <div class="heat-spectrum" aria-hidden="true">
+            <div class="heat-spectrum-track">
+              <span class="seg-safe"></span>
+              <span class="seg-caution"></span>
+              <span class="seg-danger"></span>
+              <i id="heat-scale-marker" class="heat-spectrum-dot" style="left:0%" hidden></i>
+            </div>
+            <div class="heat-spectrum-labels">
+              <span>&lt;32° Mát mẻ</span>
+              <span>32–38° Nóng bức</span>
+              <span>≥38° Rất nóng</span>
+            </div>
+          </div>
+          <p class="heat-explanation">Nhiệt độ mà cơ thể thực tế cảm thấy ngoài trời</p>
+        </article>
+
+        <div class="weather-context">
+          <div class="weather-context-heading">
+            <span class="live-label"><i aria-hidden="true"></i> CHỈ SỐ ĐO ĐƯỢC</span>
+            <span id="station-status" class="badge-status neutral">Chưa chọn điểm đo</span>
+          </div>
+          <div class="weather-metrics">
+            <article class="reading-card temperature">
+              <span class="metric-label">
+                <span class="metric-badge temp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0Z"/><path d="M12 8v10"/></svg></span>
+                Nhiệt độ
+              </span>
+              <div class="metric-number"><strong id="temperature">—</strong><b>°C</b></div>
+              <span class="metric-sub">Nhiệt độ không khí tại trạm</span>
+            </article>
+            <article class="reading-card humidity">
+              <span class="metric-label">
+                <span class="metric-badge hum"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s-7 8-7 12a7 7 0 0 0 14 0c0-4-7-12-7-12Z"/><path d="M9 16a3 3 0 0 0 3 3"/></svg></span>
+                Độ ẩm
+              </span>
+              <div class="metric-number"><strong id="humidity">—</strong><b>%</b></div>
+              <div class="humidity-bar" aria-hidden="true"><span id="humidity-bar-fill" style="width:0%"></span></div>
+            </article>
+          </div>
+          <p id="reading-update" class="reading-update">Đang chờ số đo từ trạm…</p>
+          <div class="current-actions">
+            <label class="station-select" for="device-select">
+              <span class="visually-hidden">Chọn điểm đo</span>
+              <select id="device-select" disabled><option value="">Chưa có điểm đo</option></select>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="weather" data-tab-panel="weather" class="local-weather" aria-labelledby="weather-title">
+      <div class="local-weather-heading">
+        <div>
+          <h2 id="weather-title">Thời tiết hôm nay</h2>
+          <p class="weather-source">Xem nhanh nhiệt độ, độ ẩm và mức độ nóng bức quanh bạn.</p>
+        </div>
+        <div class="weather-location-actions">
+          <button id="weather-use-location" class="btn btn-soft" type="button" aria-describedby="weather-location-help">
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/><circle cx="12" cy="12" r="7"/></svg>
+            Vị trí của tôi
+          </button>
+          <button id="weather-use-station" class="btn btn-soft" type="button" hidden>Xem tại trạm đo</button>
+        </div>
+      </div>
+      <p id="weather-location-help" class="weather-source" hidden></p>
+      <p id="weather-status" class="weather-status" role="status">Đang tải thời tiết…</p>
+      <button id="weather-retry" class="btn" type="button" hidden>Thử lại</button>
+      <div id="weather-content" class="local-weather-grid">
+        <article id="weather-current" class="current-conditions" aria-labelledby="weather-location" hidden>
+          <div class="weather-now-head">
+            <div>
+              <p id="weather-now-label" class="weather-now-label">HIỆN TẠI</p>
+              <h3 id="weather-location"></h3>
+            </div>
+            <span id="weather-icon" class="weather-main-icon" aria-hidden="true"></span>
+          </div>
+          <div class="weather-main-reading"><strong id="weather-temperature"></strong></div>
+          <p id="weather-description" class="weather-desc"></p>
+          <dl class="weather-now-metrics">
+            <div><dt>Độ ẩm</dt><dd id="weather-humidity"></dd></div>
+            <div><dt id="weather-rain-label">Khả năng mưa</dt><dd id="weather-rain"></dd></div>
+          </dl>
+          <p class="weather-time" id="weather-time"></p>
+        </article>
+        <article class="weather-hours-panel" aria-labelledby="weather-hours-title">
+          <div class="hours-panel-head">
+            <div>
+              <h3 id="weather-hours-title">Dự báo 5 giờ tới</h3>
+              <p class="weather-source">Mức độ nóng bức dự kiến trong những giờ sắp tới</p>
+            </div>
+            <span class="ai-pill">5 giờ tới</span>
+          </div>
+          <p id="weather-forecast-station" class="weather-forecast-station" hidden></p>
+          <p id="weather-forecast-message" class="section-message" role="status">Đang tải dự báo 5 giờ tới…</p>
+          <div id="weather-hours" class="forecast-hours forecast-summary-hours" aria-label="Dự báo nóng bức theo giờ" hidden></div>
+        </article>
+      </div>
+
+      <div class="weather-guide-strip" aria-label="Hướng dẫn mức nhiệt và lối tắt">
+        <div class="guide-levels">
+          <div class="guide-level normal">
+            <strong>Dưới 32°C · Mát mẻ</strong>
+            <span>An toàn, thoải mái hoạt động ngoài trời</span>
+          </div>
+          <div class="guide-level caution">
+            <strong>32 – 38°C · Nóng bức</strong>
+            <span>Nên uống đủ nước, tránh đứng lâu dưới nắng</span>
+          </div>
+          <div class="guide-level danger">
+            <strong>Từ 38°C · Rất nóng</strong>
+            <span>Hạn chế ra ngoài, tìm nơi râm mát ngay</span>
+          </div>
+        </div>
+        <div class="guide-shortcuts">
+          <button class="shortcut-card" type="button" data-tab-target="points">
+            <span class="shortcut-icon" aria-hidden="true">🌡️</span>
+            <span><strong>Xem các điểm đo</strong><small>Chi tiết nhiệt độ, độ ẩm từng trạm</small></span>
+          </button>
+          <button class="shortcut-card" type="button" data-tab-target="overview">
+            <span class="shortcut-icon" aria-hidden="true">🗺️</span>
+            <span><strong>Mở bản đồ</strong><small>Xem vị trí các trạm đo quanh bạn</small></span>
+          </button>
+          <button class="shortcut-card" type="button" data-tab-target="alerts">
+            <span class="shortcut-icon" aria-hidden="true">🔔</span>
+            <span><strong>Xem cảnh báo</strong><small>Nhận báo động ngay khi trời quá nóng</small></span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="overview" data-tab-panel="overview" class="map-section" aria-labelledby="map-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="map-title">Bản đồ trạm đo</h2>
+        </div>
+        <p class="section-caption">Bấm vào chấm tròn trên bản đồ để xem nhiệt độ tại khu vực đó</p>
+      </div>
+
+      <article class="panel map-panel map-panel-full">
+        <div class="map-toolbar">
+          <span class="map-stats-pill">
+            <i class="status-dot" aria-hidden="true"></i>
+            <strong id="total-devices">—</strong> trạm đo
+            <span class="toolbar-divider">·</span>
+            <span id="online-count">Đang tải</span>
+          </span>
+          <div class="map-toolbar-actions">
+            <button id="toggle-thermal-layer" class="btn btn-light active" type="button" aria-pressed="true" title="Bật/tắt vùng ảnh hưởng nhiệt quanh trạm đo">🔥 Vùng nhiệt</button>
+            <button id="fit-map" class="btn btn-light" type="button">◎ Xem tất cả trạm</button>
+          </div>
+        </div>
+        <div id="station-map" role="region" aria-label="Bản đồ vị trí các trạm đo"><div class="map-loading">Đang tải bản đồ…</div></div>
+        <p id="user-location-status" class="user-location-status" role="status" aria-live="polite">Bấm nút Định vị tôi trên bản đồ để xem vị trí của bạn.</p>
+        <div class="map-footer">
+          <div class="map-legend">
+            <span><i class="legend-dot normal"></i> Mát mẻ</span>
+            <span><i class="legend-dot caution"></i> Nóng bức</span>
+            <span><i class="legend-dot danger"></i> Rất nóng</span>
+            <span><i class="legend-dot offline"></i> Chưa cập nhật mới</span>
+          </div>
+          <span class="imagery-label">Cập nhật <span id="sync-time">—</span><span id="sync-date" class="visually-hidden"></span></span>
+        </div>
+        <p id="map-location-message" class="section-message" role="status">Đang kiểm tra vị trí trạm…</p>
+      </article>
+    </section>
+
+    <section id="points" data-tab-panel="points" class="points-section" aria-labelledby="stations-title">
+      <aside class="panel stations-panel stations-panel-full">
+        <div class="panel-heading">
+          <h2 id="stations-title">Danh sách điểm đo</h2>
+          <span id="station-result-count" class="count-pill">0</span>
+        </div>
+        <div class="search-field">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+          <label class="visually-hidden" for="station-search">Tìm tên trạm đo</label>
+          <input id="station-search" type="search" placeholder="Tìm tên trạm đo…" autocomplete="off">
+        </div>
+        <div id="station-list" class="station-list station-list-grid" role="list"><p class="section-message">Đang tải các điểm đo…</p></div>
+        <p class="station-help">Bấm vào một trạm để xem nhiệt độ, độ ẩm và lịch sử đo tại đó.</p>
+      </aside>
+    </section>
+
+    <section id="public-history" data-tab-panel="points" class="public-history-section" aria-labelledby="history-title">
+      <article class="panel history-card-panel">
+        <div class="history-card-head">
+          <div>
+            <h2 id="history-title">Lịch sử đo</h2>
+            <p id="history-subtitle" class="weather-source">Diễn biến nhiệt độ và độ ẩm gần đây tại trạm đang chọn.</p>
+          </div>
+          <div class="history-head-controls">
+            <label class="history-station-picker" for="history-device-select">
+              <span>Điểm đo</span>
+              <select id="history-device-select" disabled><option value="">Chưa có điểm đo</option></select>
+            </label>
+            <div class="history-range-pills" role="group" aria-label="Chọn khoảng thời gian hiển thị">
+              <button class="range-pill active" type="button" data-history-hours="3">3 giờ</button>
+              <button class="range-pill" type="button" data-history-hours="6">6 giờ</button>
+              <button class="range-pill" type="button" data-history-hours="12">12 giờ</button>
+            </div>
+            <label class="history-date-picker" for="history-date">
+              <span>Ngày</span>
+              <input id="history-date" type="date" aria-label="Xem lịch sử theo ngày">
+            </label>
+          </div>
+        </div>
+        <div id="history-summary-stats" class="history-summary-stats" hidden>
+          <div class="history-stat-tile"><span>Thấp nhất</span><strong id="history-min">—</strong></div>
+          <div class="history-stat-tile"><span>Trung bình</span><strong id="history-avg">—</strong></div>
+          <div class="history-stat-tile"><span>Cao nhất</span><strong id="history-max">—</strong></div>
+        </div>
+        <p id="history-message" class="section-message" role="status">Chọn điểm đo để xem lịch sử.</p>
+        <div class="chart-wrap" id="history-chart-wrap" hidden>
+          <canvas id="history-chart" role="img" aria-label="Biểu đồ lịch sử nhiệt độ, độ ẩm và độ nóng cảm nhận"></canvas>
+        </div>
+        <div id="history-rows" class="history-readings" role="list" aria-label="Các lần đo gần nhất"></div>
+      </article>
+    </section>
+
+    <section id="alerts" data-tab-panel="alerts" class="alerts-section" aria-labelledby="alerts-title">
+      <div class="alert-overview">
+        <h2 id="alerts-title">Cảnh báo nắng nóng</h2>
+        <p>Tự động thông báo ngay khi nhiệt độ cảm nhận vượt mức an toàn.</p>
+        <div class="heat-scale">
+          <span class="scale-normal">Dưới 32°C<small>Mát mẻ</small></span>
+          <span class="scale-caution">Từ 32°C<small>Nóng bức</small></span>
+          <span class="scale-danger">Từ 38°C<small>Rất nóng</small></span>
+        </div>
+        <p class="network-warning"><strong id="warning-count">—</strong> trạm đang có nhiệt độ vượt mức an toàn.</p>
+      </div>
+      <article class="panel alerts-panel">
+        <div class="alert-live-bar">
+          <span id="alert-live-status" class="alert-live-pill connecting" role="status">
+            <i class="live-pulse-dot" aria-hidden="true"></i>
+            <span>Đang kết nối cảnh báo trực tiếp…</span>
+          </span>
+          <div class="alert-live-controls">
+            <button id="alert-sound-toggle" class="btn btn-sm" type="button" aria-pressed="false" title="Bật/tắt âm thanh khi có cảnh báo mới">🔇 Âm thanh</button>
+            <button id="alert-notify-toggle" class="btn btn-sm" type="button" aria-pressed="false" title="Nhận thông báo trình duyệt khi có cảnh báo mới">🔔 Thông báo</button>
+          </div>
+        </div>
+        <p id="alert-message" class="section-message" role="status">Chọn điểm đo để xem cảnh báo.</p>
+        <div id="alert-list" class="alert-list"></div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <a class="footer-brand" href="#weather" data-tab-target="weather">HeatWatch<span>°</span></a>
+    <p>Theo dõi nóng bức từ các trạm đo quanh bạn.</p>
+    <span>Dữ liệu đo trực tiếp tại trạm</span>
+  </footer>
+  <aside id="realtime-alert-banner" class="realtime-alert-banner" role="alert" aria-live="assertive" hidden>
+    <div class="realtime-alert-head">
+      <span id="realtime-alert-badge" class="badge-status caution">△ Cảnh báo nóng</span>
+      <button id="realtime-alert-close" class="realtime-alert-close" type="button" aria-label="Đóng cảnh báo">×</button>
+    </div>
+    <strong id="realtime-alert-title"></strong>
+    <p id="realtime-alert-body"></p>
+    <div class="realtime-alert-actions">
+      <span id="realtime-alert-time"></span>
+      <button id="realtime-alert-open" class="btn btn-primary btn-sm" type="button">Xem cảnh báo</button>
+    </div>
+  </aside>
+  <div id="toast-message" class="app-toast" role="status" hidden></div>
+</body>
+</html>

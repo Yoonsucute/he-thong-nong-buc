@@ -1,0 +1,121 @@
+/* Admin Login & Session Controls */
+.login-page {
+  margin: 0;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(ellipse 70% 50% at 85% 10%, rgba(14, 165, 164, 0.16), transparent 60%),
+    linear-gradient(145deg, #e5f1ff 0%, #f4faff 55%, #e6f8f7 100%);
+  color: #0f2942;
+  font-family: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+}
+.login-card {
+  width: min(420px, calc(100vw - 48px));
+  padding: 36px;
+  background: #fff;
+  border: 1px solid #d5e5f4;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(15, 76, 129, 0.12);
+}
+.login-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f2942;
+}
+.login-mark {
+  width: 38px; height: 38px; border-radius: 12px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #155eef 0%, #0ea5a4 100%);
+  color: #fff; font-size: 19px; font-weight: 800;
+}
+.login-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  margin-top: 28px;
+  color: #0b8483;
+  font-weight: 800;
+}
+.login-card h1 { font-size: 26px; margin: 10px 0; font-weight: 800; }
+.login-card p { font-size: 13px; line-height: 1.6; color: #5b7591; }
+.login-card label { display: block; font-size: 12px; margin: 18px 0 7px; font-weight: 700; color: #274868; }
+.login-card input:not([type="hidden"]) {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cfe0f2;
+  border-radius: 11px;
+  font: inherit;
+  color: #0f2942;
+  background: #f8fbff;
+}
+.login-card input:focus {
+  outline: 3px solid rgba(21, 94, 239, 0.18);
+  border-color: #155eef;
+  background: #fff;
+}
+.login-card button {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #155eef 0%, #0ea5a4 100%);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  padding: 13px;
+  margin-top: 24px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(21, 94, 239, 0.24);
+}
+.login-card button:hover { filter: brightness(0.95); }
+.login-error {
+  background: #ffecee;
+  color: #b42234;
+  border: 1px solid #f4c7cc;
+  padding: 12px 14px;
+  border-radius: 11px;
+  font-size: 13px;
+  margin-top: 12px;
+}
+.public-link {
+  display: inline-block;
+  margin-top: 22px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #155eef;
+  text-decoration: none;
+}
+.public-link:hover { text-decoration: underline; }
+.login-card .login-note { font-size: 12px; margin-bottom: 0; margin-top: 10px; }
+
+.admin-session { display: flex; align-items: center; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+.admin-session form { margin: 0; }
+.admin-session a { font-size: 12px; font-weight: 600; color: #155eef; text-decoration: none; }
+.admin-session a:hover { text-decoration: underline; }
+.admin-session button {
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #cfe0f2;
+  background: #fff;
+  border-radius: 9px;
+  padding: 7px 12px;
+  color: #155eef;
+  cursor: pointer;
+}
+.admin-session button:hover { background: #eff6fe; }
+
+/* AI Evaluation Metrics Card on Admin */
+.metrics-panel { padding: 20px 22px; }
+.metrics-panel .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.metrics-panel h3 { font-size: 17px; font-weight: 700; margin: 2px 0 0; }
+.metrics-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+.metric-kpi { background: #f4f9fe; border: 1px solid #dbe9f6; border-radius: 12px; padding: 14px 16px; display: grid; gap: 4px; }
+.metric-kpi span { font-size: 12px; font-weight: 600; color: #546e8a; }
+.metric-kpi strong { font-size: 22px; font-weight: 800; color: #0f2942; }
+.metric-kpi small { font-size: 11px; color: #6c8299; }
+.metric-meta { font-size: 12px; color: #546e8a; margin: 0 0 12px; }
+@media (max-width: 700px) { .metrics-summary-grid { grid-template-columns: 1fr; } }
